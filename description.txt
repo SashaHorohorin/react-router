@@ -59,7 +59,157 @@ state - мы в него можем передать, какую-либо инф
 
 Приватные route: 
 
+Чтобы нам создать приватные route нам надо создать обертку для route, которыми мы хотим сделать приватными.
+В нашем случае это будет RequireAuth.
 
+    <Route
+        path="blog/new"
+        element={
+            <RequireAuth>
+                <CreatePost />
+            </RequireAuth>
+        }
+    />
 
+После в компоненте RequireAuth мы будем проверять, пользователь авторизован или нет, и какую страницу ему отображать.
 
+Если у нас пользователь не авторизован, мы перекидываем его на страницу Login, если он авторизован, то проходит туда, куда хотел.
+В строка ниже отвечает за переодрисацию пользователя если он не авторизован.
+В state у нас передается поле from в котором храниться путь по которому пользователь хотел первоначально перейти.
+Чтобы после того, как он авторизуется перенаправить его на желаемую страницу.
+
+    return <Navigate to="/login" state={{from: location}} />
+
+Создаем AuthContext, там будут храниться переменные и функции, которые мы будем ипользовать в нашем проекте.
+
+    export const AuthContext = createContext(null);
+
+Потом создаем AuthProvider, создаем глобальную переменную user, которая будет отвечать за то, авторизован пользователь или нет.
+Если в этой переменной, что-нибудь храниться, значит пользователь есть.
+Так же там хранятся методы singin и singout. 
+
+    const signin = (newUser, cb) => {
+        setUser(newUser); // записываем имя пользователя
+        cb(); 
+    }
+    const signout = (cb) => {
+        setUser(null); // при выходе из аккаунта, обнуляем пользователя
+        cb();
+    }
+
+Теперь создаем сам context
+
+    const value = {user, signin, signout}; // Хранится все, что мы хотим сделать глобальным
+
+    return <AuthContext.Provider value={value}>
+        {children}
+    </AuthContext.Provider>
+
+После того, как все создали, оборачиваем все наши route в AuthProvider, чтобы мы могли использовать наши переменные во всех компанентах.
+
+Создадим hook useAuth, чтобы постоянно не писать useContext
+
+export function useAuth(){
+    return useContext(AuthContext);
+}
+
+Когда создали страницу Login нам нужно сделать запись данных и перенаправление на страницу, на которую хотел попасть пользователь.
+Получаем из useLocation наш state, и достаем из него from.
+
+    const fromPage = location.state?.from?.pathname || '/';
+
+Вытаскиваем нашу функцию singin из context.
+
+    const {signin} = useAuth();
+
+Создаем нашу headler функцию, которая будет вызываться при отправке формы.
+
+    const handleSubmit = (event) => {
+        event.preventDefault();
+        
+        const form = event.target; // получаем саму форму
+        const user = form.username.value; // вытаскиваем name из input
+
+        // после регистрации возврацаемся на страницу на которую у нас открылся доступ
+        signin(user, () => navigate(fromPage, {replace: true})); 
+
+    }
+
+==================================================================================================================
+
+Параметры поиска:
+
+Параметры поиска - это все данные, которые храняться после вопроса, в URL 
+
+    http://localhost:3000/blog (?post=dor&latest=true) - эта часть
+
+Мы можем изменять и достовать все параметры, которые нам нужны
+Все это мы далаем с помощью хука useSearchParams.
+
+    const [searchParams, setSearchParams] = useSearchParams();
+
+Обращаясь к переменной searchParams мы можем вызывать методы, которые нам будут помогать рабатать с параметрами
+
+    const postQuery = searchParams.get('post') || ''; // Достаем из параметров значение post (post=dor)
+    const latest = searchParams.has('latest'); // проверяем, есть ли данный параметр в нашем списке
+
+Пример записи параметров: 
+
+    const handleSubmit = (e) => {   
+        e.preventDefault();
+
+        // Достаем из формы дынные
+        const form = e.target;
+        const query = form.search.value;
+        const isLatest = form.latest.checked;
+        
+        const params = {}; // Создаем объект, в который бцдет записываться все нжные данные, для сортировки данных
+    
+        // записываем в объект поля 
+        if(query.length) params.post = query;
+        if(isLatest) params.latest = true;
+        // ?post=la&latest=true
+
+        // передаем этот вбъект в поля URL
+        setSearchParams(params);
+    }
+
+==================================================================================================================
+
+Вложенный Route: 
+
+Вложенный Routе - это когда, мы хотим, чтобы у нас одна часть сайта оставалась неизменной, а другая переходила на другую станицу
+В такой ситуации нам надо использовать вложенные Route
+
+about/* - говорит нам о том, что элемент <AboutPage /> должен не изменяться, но переход по страницам возможен
+
+    <Route path="about/*" element={<AboutPage />} />    
+
+Пример использования.
+
+    const AboutPage = () => {
+        return (
+            <>
+                // Весь этот куд будет не изменный
+                <h1>AboutPage</h1>
+                <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Minima commodi ullam ea! Nisi quasi, sed
+                deserunt iure aperiam harum atque temporibus odio maiores ipsa fugit quidem, corporis ab, veritatis repellat.</p>
+                <ul>
+                    <li><Link to="contacts">Our Contact</Link></li>
+                    <li><Link to="team">Our Team</Link></li>
+                </ul>
+
+                // Когда будет выполненна переадресация по этим route, то все что было выше останется неизменным, а route будут отображаться ниже 
+                <Routes>
+                    <Route path="contacts" element={<p>Our Contact, will call me and i will tell you true</p>}/>
+                    <Route path="team" element={<p>Our Team. This best team in the Planet!</p>}/>
+                </Routes>
+            </>
+        );
+    };
+
+Так же вложенность можно  указать, через осную часть, написав его в самом Route About 
+
+Но тогда в самом компоненте About нужно указатьб эемент Outlet, чтобы показать, где отображать контент.     
+==================================================================================================================
 

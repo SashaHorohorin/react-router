@@ -26,7 +26,25 @@ function App() {
                     {/* Это общая обертка, которая будет отрисовываться всегда */}
                     <Route path="/" element={<Layout />}>
                         <Route index element={<Homepage />} />
-                        <Route path="about" element={<AboutPage />} />
+                        <Route path="about" element={<AboutPage />}>
+                            <Route
+                                path="contacts"
+                                element={
+                                    <p>
+                                        Our Contact, will call me and i will
+                                        tell you true
+                                    </p>
+                                }
+                            />
+                            <Route
+                                path="team"
+                                element={
+                                    <p>
+                                        Our Team. This best team in the Planet!
+                                    </p>
+                                }
+                            />
+                        </Route>
                         <Route
                             path="about-us"
                             element={<Navigate to="/about" replace />}
